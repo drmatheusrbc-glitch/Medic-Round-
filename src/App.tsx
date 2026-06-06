@@ -9,6 +9,7 @@ import DailyRoundTab from './components/DailyRoundTab';
 import VentilationTab from './components/VentilationTab';
 import ScoresTab from './components/ScoresTab';
 import CalculatorTab from './components/CalculatorTab';
+import ReportSummaryTab from './components/ReportSummaryTab';
 import { 
   Stethoscope, 
   Users, 
@@ -17,7 +18,8 @@ import {
   Calculator, 
   Moon, 
   Sun, 
-  HeartHandshake
+  HeartHandshake,
+  FileText
 } from 'lucide-react';
 
 // Generates simulated clinical patients for instant visual satisfaction on first-load
@@ -83,7 +85,7 @@ const INITIAL_DEMO_PATIENTS: PatientRound[] = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'round' | 'vent' | 'scores' | 'calc'>('round');
+  const [activeTab, setActiveTab] = useState<'round' | 'vent' | 'scores' | 'calc' | 'summary'>('round');
   const [patients, setPatients] = useState<PatientRound[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
@@ -156,7 +158,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200">
       
       {/* Clinician Top Header */}
-      <header className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-850 px-4 py-3 sm:px-6 shadow-xs">
+      <header className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-850 px-4 py-3 sm:px-6 shadow-xs print:hidden">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="bg-blue-600 dark:bg-blue-500 p-2 rounded-xl text-white shadow-xs">
@@ -193,11 +195,12 @@ export default function App() {
       </header>
 
       {/* Main Clinical Navigation Workspace */}
-      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-850 sticky top-[57px] z-40">
+      <nav className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-850 sticky top-[57px] z-40 print:hidden">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex overflow-x-auto gap-1 py-1 sm:py-2 scrollbar-none">
             {[
               { id: 'round', name: 'Round Diário', icon: Users },
+              { id: 'summary', name: 'Resumo de Prontuário', icon: FileText },
               { id: 'vent', name: 'Ventilação Mecânica', icon: Wind },
               { id: 'scores', name: 'Escores Médicos', icon: Activity },
               { id: 'calc', name: 'Calculadora Médica', icon: Calculator }
@@ -231,13 +234,14 @@ export default function App() {
             onDeletePatient={handleDeletePatient} 
           />
         )}
+        {activeTab === 'summary' && <ReportSummaryTab />}
         {activeTab === 'vent' && <VentilationTab />}
         {activeTab === 'scores' && <ScoresTab />}
         {activeTab === 'calc' && <CalculatorTab />}
       </main>
 
       {/* Clinical Footer Disclaimer */}
-      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-850 py-4 px-4 text-center mt-12 select-none">
+      <footer className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-850 py-4 px-4 text-center mt-12 select-none print:hidden">
         <p className="text-[11px] text-slate-405 font-medium flex items-center justify-center gap-1">
           <Stethoscope className="w-3.5 h-3.5 text-blue-500" />
           Medic Round Pro — Projetado para médicos intensivistas, emergencistas e pneumologistas.

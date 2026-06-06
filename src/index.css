@@ -10,3 +10,71 @@ body {
   font-family: var(--font-sans);
 }
 
+@media print {
+  /* Force exact color reproduction on browser print rendering */
+  *, .dark * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-scheme: light !important;
+    color: #1e293b !important; /* slate-800 default text color for print */
+    background-color: transparent !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+  
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Optimize page splits on tables and cards */
+  div[id^="section-"], .rounded-xl, .shadow-xs {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Print-safe borders */
+  .border, .border-slate-200, .border-slate-800, .border-slate-850 {
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Retain clinical diagnosis colors for badges and alerts */
+  .text-rose-500, .text-rose-600, .text-rose-700, .text-rose-455, .text-rose-400 {
+    color: #991b1b !important;
+  }
+  .bg-rose-50, .bg-rose-50\/20, .bg-rose-50\/80, .dark .bg-rose-955\/20, .bg-rose-955\/20 {
+    background-color: #fef2f2 !important;
+    border-color: #fca5a5 !important;
+  }
+
+  .text-emerald-500, .text-emerald-600, .text-emerald-700, .text-emerald-400 {
+    color: #166534 !important;
+  }
+  .bg-emerald-50, .bg-emerald-50\/15, .bg-emerald-100, .dark .bg-emerald-950\/45, .bg-emerald-950\/45 {
+    background-color: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+  }
+
+  .text-blue-500, .text-blue-600, .text-blue-700, .text-blue-400 {
+    color: #1e40af !important;
+  }
+  .bg-blue-50, .bg-blue-50\/80, .bg-blue-100, .dark .bg-blue-955\/20, .bg-blue-955\/20 {
+    background-color: #eff6ff !important;
+    border-color: #bfdbfe !important;
+  }
+
+  .text-amber-500, .text-amber-600, .text-amber-800, .text-amber-900, .text-amber-400 {
+    color: #92400e !important;
+  }
+  .bg-amber-50, .bg-amber-50\/30, .bg-amber-100, .dark .bg-amber-955\/20, .bg-amber-955\/20 {
+    background-color: #fffbeb !important;
+    border-color: #fef3c7 !important;
+  }
+
+  /* Keep checkboxes visible */
+  input[type="checkbox"] {
+    border: 1px solid #475569 !important;
+    background-color: #ffffff !important;
+  }
+}
+
