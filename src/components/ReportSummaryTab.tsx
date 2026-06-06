@@ -444,7 +444,7 @@ ${summary.prescricaoMedica?.length > 0
                 value={evolutionText}
                 onChange={(e) => setEvolutionText(e.target.value)}
                 placeholder="Por favor, cole as anotações do prontuário eletrônico, evolução médica recente, anotações de plantão, exames laboratoriais ou notas do round com o paciente..."
-                className="w-full h-80 max-h-120 p-3.5 border border-slate-250 dark:border-slate-800 rounded-lg text-xs bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-150 focus:outline-hidden focus:border-blue-500 font-sans tracking-wide leading-relaxed scrollbar-thin"
+                className="w-full h-80 max-h-120 p-3.5 border border-slate-700 dark:border-slate-800 rounded-lg text-xs bg-slate-900 dark:bg-slate-950 text-white dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-blue-500 font-sans tracking-wide leading-relaxed scrollbar-thin shadow-inner"
               />
 
               <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 font-medium">
@@ -473,7 +473,7 @@ ${summary.prescricaoMedica?.length > 0
                 value={prescriptionText}
                 onChange={(e) => setPrescriptionText(e.target.value)}
                 placeholder="Cole o texto da prescrição farmacológica do leito do paciente aqui se disponível..."
-                className="w-full h-34 p-3 border border-slate-200 dark:border-slate-800 rounded-lg text-xs bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-150 focus:outline-hidden focus:border-blue-500 font-sans leading-relaxed scrollbar-thin"
+                className="w-full h-34 p-3 border border-slate-700 dark:border-slate-800 rounded-lg text-xs bg-slate-900 dark:bg-slate-950 text-white dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:border-blue-500 font-sans leading-relaxed scrollbar-thin shadow-inner"
               />
             </div>
 

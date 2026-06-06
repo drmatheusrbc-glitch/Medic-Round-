@@ -473,7 +473,7 @@ export default function DailyRoundTab({ patients, onSavePatient, onDeletePatient
                             {new Date(p.createdAt).toLocaleDateString('pt-BR')}
                           </span>
                         </div>
-                        <h3 className="text-base font-bold text-slate-800 dark:text-slate-105">{p.name}</h3>
+                        <h3 className="text-base font-bold text-white dark:text-white">{p.name}</h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400">Idade: <span className="font-semibold text-slate-700 dark:text-slate-300">{p.age} anos</span></p>
                       </div>
 
@@ -1022,7 +1022,7 @@ export default function DailyRoundTab({ patients, onSavePatient, onDeletePatient
                             <span className="bg-blue-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
                               Leito {p.bed}
                             </span>
-                            <span className="font-bold text-slate-800 dark:text-white text-sm">
+                            <span className="font-bold text-white dark:text-white text-sm">
                               {p.name}
                             </span>
                             <span className="text-slate-450 dark:text-slate-400 text-xs">({p.age} anos)</span>
