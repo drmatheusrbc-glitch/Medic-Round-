@@ -1,0 +1,6 @@
+{
+  "name": "Medic Round Pro",
+  "description": "Aplicativo médico de suporte à decisão clínica para rounds em UTI, enfermarias, emergência e pneumologia, com calculadoras de ventilação mecânica, scores médicos e acompanhamento diário.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
