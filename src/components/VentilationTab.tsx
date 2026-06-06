@@ -670,7 +670,7 @@ Gerado automaticamente pelo Medic Round Pro. Uso exclusivo para profissionais de
                   <p className="text-[10px] text-slate-400 select-none">Volume corrente gerido por quilo ideal de peso.</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-black text-blue-600 dark:text-blue-400">
+                  <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                     {vcPerKg > 0 ? `${vcPerKg.toFixed(1)} ml/kg` : '-- ml/kg'}
                   </p>
                   {vcInterpretation && (
@@ -709,7 +709,7 @@ Gerado automaticamente pelo Medic Round Pro. Uso exclusivo para profissionais de
                       <p className="text-[10px] text-slate-400">PEEP Ajustada + Auto-PEEP registrada.</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-black text-slate-850 dark:text-white">
+                      <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                         {totalPeep} cmH₂O
                       </p>
                     </div>
@@ -723,7 +723,7 @@ Gerado automaticamente pelo Medic Round Pro. Uso exclusivo para profissionais de
                       <p className="text-[10px] text-slate-400">VC / (Pplatô - PEEPtot). Normal: 50-80 ml/cmH₂O.</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-lg font-black text-slate-850 dark:text-white">
+                      <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                         {complacenciaEstatica > 0 ? `${complacenciaEstatica.toFixed(1)} ml/cmH₂O` : '-- ml/cmH₂O'}
                       </p>
                       {complacenciaEstatica > 0 && (
@@ -743,7 +743,7 @@ Gerado automaticamente pelo Medic Round Pro. Uso exclusivo para profissionais de
                         <p className="text-[10px] text-slate-400">(Ppico - Pplatô) / (Fluxo em L/s). Normal &lt;10.</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-black text-slate-850 dark:text-white">
+                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                           {resistenciaViasAereas > 0 ? `${resistenciaViasAereas.toFixed(1)} cmH₂O/L/s` : '-- cmH₂O/L/s'}
                         </p>
                         {resistenciaViasAereas > 0 && (
@@ -764,26 +764,26 @@ Gerado automaticamente pelo Medic Round Pro. Uso exclusivo para profissionais de
                           <p className="text-[10px] text-slate-400 font-mono mt-0.5">Fórmula: Rrs ({resistenciaViasAereas.toFixed(1)} cmH₂O/L/s) * Crs ({complacenciaEstatica.toFixed(1)} ml/cmH₂O) / 1000</p>
                           <p className="text-[10px] text-slate-400">Tempo de esvaziamento pulmonar passivo.</p>
                         </div>
-                        <p className="text-lg font-black text-slate-850 dark:text-white">
+                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                           {tau.toFixed(2)} segundos
                         </p>
                       </div>
                       <div className="grid grid-cols-4 gap-1 text-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-1.5 rounded-md text-[9px] text-slate-500">
                         <div>
                           <p className="font-semibold">1 Const</p>
-                          <p className="text-slate-700 dark:text-slate-300">{tau.toFixed(2)}s</p>
+                          <p className="text-slate-705 dark:text-slate-300">{tau.toFixed(2)}s</p>
                         </div>
                         <div>
                           <p className="font-semibold">2 Const</p>
-                          <p className="text-slate-700 dark:text-slate-300">{(tau*2).toFixed(2)}s</p>
+                          <p className="text-slate-705 dark:text-slate-300">{(tau*2).toFixed(2)}s</p>
                         </div>
                         <div>
                           <p className="font-semibold">3 Const</p>
-                          <p className="text-slate-700 dark:text-slate-300 text-blue-600 dark:text-blue-400 font-bold">{(tau*3).toFixed(2)}s</p>
+                          <p className="text-slate-705 dark:text-slate-300 text-blue-600 dark:text-blue-400 font-bold">{(tau*3).toFixed(2)}s</p>
                         </div>
                         <div>
                           <p className="font-semibold">5 Const</p>
-                          <p className="text-slate-700 dark:text-slate-300">{(tau*5).toFixed(2)}s</p>
+                          <p className="text-slate-705 dark:text-slate-300">{(tau*5).toFixed(2)}s</p>
                         </div>
                       </div>
                       <div className="flex gap-1.5 p-2 bg-blue-50/40 dark:bg-blue-950/25 border border-blue-200/30 dark:border-blue-900/40 rounded-lg text-blue-800 dark:text-blue-450 text-[10px] font-semibold items-start leading-tight">
@@ -803,7 +803,7 @@ Gerado automaticamente pelo Medic Round Pro. Uso exclusivo para profissionais de
                   <p className="text-[10px] text-slate-400">Classificação SARA (Berlim). FiO₂ como fração.</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-black text-slate-900 dark:text-white">
+                  <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">
                     {pfRatio > 0 ? `${pfRatio.toFixed(0)}` : '--'}
                   </p>
                   {pfInterpretation && (
@@ -815,14 +815,14 @@ Gerado automaticamente pelo Medic Round Pro. Uso exclusivo para profissionais de
               </div>
 
               {/* Tobin Index RSBI */}
-              <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-955 p-3 rounded-lg border border-slate-100 dark:border-slate-850/50">
+              <div className="flex justify-between items-center bg-slate-55 dark:bg-slate-955 p-3 rounded-lg border border-slate-100 dark:border-slate-850/50">
                 <div>
                   <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Índice de Tobin (RSBI)</p>
                   <p className="text-[10px] text-slate-400 font-mono mt-0.5">Fórmula: FR ({mode === 'PSV' ? (psvFrSpont || 0) : (fr || 0)} ipm) / VC ({(mode === 'PSV' ? (Number(psvVcSpont) || 0) : (Number(volume) || 0)) / 100} L)</p>
                   <p className="text-[10px] text-slate-400">FR / Volume Corrente (litros). Preditor de desmame.</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xl font-black text-slate-900 dark:text-white">
+                  <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">
                     {tobinIndex > 0 ? `${tobinIndex.toFixed(0)}` : '--'}
                   </p>
                   {tobinInterpretation && (
