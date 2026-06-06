@@ -250,10 +250,17 @@ export default function ReportSummaryTab() {
         }),
       });
 
-      const data = await response.json();
+      let data;
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const textError = await response.text();
+        throw new Error(`O servidor de processamento retornou uma resposta inesperada (Status: ${response.status}). Detalhes: ${textError.substring(0, 100) || "Resposta vazia"}`);
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || `Erro do servidor (${response.status})`);
+        throw new Error(data?.error || `Erro do servidor (${response.status})`);
       }
 
       setSummary(data);
