@@ -262,11 +262,16 @@ ${prescriptionText || "Nenhuma prescrição por texto anexada."}
       throw new Error("O modelo Gemini retornou uma resposta vazia.");
     }
 
-    const summaryData = JSON.parse(resultText.trim());
-    res.json(summaryData);
+    try {
+      const summaryData = JSON.parse(resultText.trim());
+      res.json(summaryData);
+    } catch (parseError: any) {
+      console.error("Erro ao analisar JSON retornado de Gemini:", resultText);
+      throw new Error("O modelo Gemini retornou um formato de dados inválido e não pôde ser lido.");
+    }
   } catch (error: any) {
     console.error("Erro na rota de resumo:", error);
-    res.status(550).json({
+    res.status(500).json({
       error: error.message || "Erro desconhecido ao processar a requisição com o Gemini.",
     });
   }
