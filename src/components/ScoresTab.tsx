@@ -14,10 +14,15 @@ import {
   ClipboardList
 } from 'lucide-react';
 
-type ScoreType = 'saps3' | 'sofa' | 'rass' | 'camicu' | 'gcs' | 'bps' | 'cpot' | 'berlin' | 'pesi' | 'spesi';
+type ScoreType = 'saps3' | 'sofa' | 'rass' | 'camicu' | 'gcs' | 'bps' | 'cpot' | 'berlin' | 'pesi' | 'spesi' | 'ckdepi';
 
 export default function ScoresTab() {
   const [activeScore, setActiveScore] = useState<ScoreType>('gcs');
+
+  // --- CKD-EPI 2021 STATE ---
+  const [ckdGender, setCkdGender] = useState<'male' | 'female'>('male');
+  const [ckdAge, setCkdAge] = useState<number>(60);
+  const [ckdCreatinine, setCkdCreatinine] = useState<string>('1.0');
 
   // --- GLASGOW COMA SCALE STATE ---
   const [gcsEye, setGcsEye] = useState(4);
@@ -215,12 +220,62 @@ export default function ScoresTab() {
     return { pesiVal: scoreVal, classification, clColor, sScore, sPESIHigh };
   };
 
+  // 10. CKD-EPI 2021 GFR/TFG
+  const computedCKDEPI = () => {
+    const scr = parseFloat(ckdCreatinine);
+    if (isNaN(scr) || scr <= 0 || isNaN(ckdAge) || ckdAge <= 0) {
+      return { gfr: null, label: 'Insira dados válidos', color: 'text-slate-400 bg-slate-50 dark:bg-slate-950/20 border border-slate-200' };
+    }
+
+    const kappa = ckdGender === 'female' ? 0.7 : 0.9;
+    const alpha = ckdGender === 'female' ? -0.241 : -0.302;
+    const minPart = Math.min(scr / kappa, 1.0);
+    const maxPart = Math.max(scr / kappa, 1.0);
+    const femaleMultiplier = ckdGender === 'female' ? 1.012 : 1.0;
+
+    const egfr = 142 
+      * Math.pow(minPart, alpha) 
+      * Math.pow(maxPart, -1.200) 
+      * Math.pow(0.9938, ckdAge) 
+      * femaleMultiplier;
+
+    let label = '';
+    let color = '';
+
+    if (egfr >= 90) {
+      label = 'G1 - Normal ou elevado (≥ 90 mL/min/1.73m²)';
+      color = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250';
+    } else if (egfr >= 60) {
+      label = 'G2 - Ligeiramente diminuído (60-89 mL/min/1.73m²)';
+      color = 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20 border border-green-250';
+    } else if (egfr >= 45) {
+      label = 'G3a - Diminuído ligeira a moderadamente (45-59 mL/min/1.73m²)';
+      color = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-250';
+    } else if (egfr >= 30) {
+      label = 'G3b - Diminuído moderada a severamente (30-44 mL/min/1.73m²)';
+      color = 'text-orange-500 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20 border border-orange-250';
+    } else if (egfr >= 15) {
+      label = 'G4 - Diminuído severamente (15-29 mL/min/1.73m²)';
+      color = 'text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border border-red-250';
+    } else {
+      label = 'G5 - Falência Renal / Estágio Terminal (< 15 mL/min/1.73m²)';
+      color = 'text-rose-600 dark:text-rose-450 bg-rose-50 dark:bg-rose-950/20 border border-rose-250 font-bold';
+    }
+
+    return { 
+      gfr: egfr.toFixed(1), 
+      label, 
+      color
+    };
+  };
+
   const scoresList = [
     { id: 'gcs', name: 'Escala de Glasgow (neurológico)', icon: Brain, category: 'Neurológicos' },
     { id: 'rass', name: 'RASS (Sedação & Agitação)', icon: Activity, category: 'Sedação' },
     { id: 'camicu', name: 'CAM-ICU (Delirium)', icon: AlertOctagon, category: 'Sedação' },
     { id: 'sofa', name: 'SOFA 2.0 (Disfunção Orgânica)', icon: ClipboardList, category: 'Intensiva' },
     { id: 'saps3', name: 'SAPS 3 (Mortalidade prognóstica)', icon: FileCheck, category: 'Intensiva' },
+    { id: 'ckdepi', name: 'Filtração Glomerular (CKD-EPI 2021)', icon: Activity, category: 'Renal' },
     { id: 'bps', name: 'BPS (Escala de Dor Conduta)', icon: Flame, category: 'Dor' },
     { id: 'cpot', name: 'CPOT (Pain Evaluation)', icon: Flame, category: 'Dor' },
     { id: 'berlin', name: 'Critérios de Berlim (SARA)', icon: Wind, category: 'Respiratório' },
@@ -1104,13 +1159,114 @@ export default function ScoresTab() {
                 </div>
 
                 {/* sPESI Simplified output */}
-                <div className={`p-4 rounded-xl border ${computedPESI().sPESIHigh ? 'bg-orange-50 dark:bg-slate-950 border-orange-250' : 'bg-emerald-50 dark:bg-slate-950 border-emerald-250'} space-y-1`}>
+                <div className={`p-4 rounded-xl border ${computedPESI().sPESIHigh ? 'bg-orange-50 dark:bg-slate-955 border-orange-250' : 'bg-emerald-50 dark:bg-slate-955 border-emerald-250'} space-y-1`}>
                   <span className="text-[10px] uppercase font-bold text-slate-400 block">Escore sPESI Simplificado</span>
                   <p className="text-xl font-black text-slate-850 dark:text-white">{computedPESI().sScore} pontos</p>
                   <span className={`text-[10.5px] font-bold block ${computedPESI().sPESIHigh ? 'text-orange-600' : 'text-emerald-600'}`}>
                     Risco sPESI: {computedPESI().sPESIHigh ? 'ALTO RISCO (Mortalidade em 30d ~ 10.9%)' : 'BAIXO RISCO (Excepcional; óbito 30d ~ 1.0%)'}
                   </span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* 10. CKD-EPI 2021 INTERACTIVE SCREEN */}
+          {activeScore === 'ckdepi' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-850 dark:text-white flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-indigo-600 animate-pulse" />
+                  Taxa de Filtração Glomerular (CKD-EPI 2021)
+                </h3>
+                <p className="text-xs text-slate-400">Cálculo da Taxa de Filtração Glomerular Estimada (eTFGe) utilizando a equação de creatinina do CKD-EPI 2021 (sem coeficiente de raça).</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Gender selection */}
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-955 rounded-lg border border-slate-150">
+                  <label className="block text-xs font-bold text-slate-550 uppercase mb-2">Sexo Biológico</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCkdGender('female')}
+                      className={`py-2 text-xs font-semibold rounded-md border text-center transition-all ${ckdGender === 'female' ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 border-slate-200 text-slate-700 dark:text-slate-350'}`}
+                    >
+                      Feminino
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCkdGender('male')}
+                      className={`py-2 text-xs font-semibold rounded-md border text-center transition-all ${ckdGender === 'male' ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs' : 'bg-white dark:bg-slate-900 border-slate-200 text-slate-700 dark:text-slate-350'}`}
+                    >
+                      Masculino
+                    </button>
+                  </div>
+                </div>
+
+                {/* Age Input */}
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-955 rounded-lg border border-slate-150">
+                  <label className="block text-xs font-bold text-slate-550 uppercase mb-2">Idade (anos)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    placeholder="Ex: 60"
+                    value={ckdAge}
+                    onChange={(e) => setCkdAge(Math.max(1, Math.min(120, Number(e.target.value) || 0)))}
+                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md text-sm text-slate-800 dark:text-white font-semibold"
+                  />
+                </div>
+
+                {/* Creatinine Input */}
+                <div className="p-3.5 bg-slate-50 dark:bg-slate-955 rounded-lg border border-slate-150">
+                  <label className="block text-xs font-bold text-slate-550 uppercase mb-2">Creatinina Sérica (mg/dL)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 1.0"
+                    value={ckdCreatinine}
+                    onChange={(e) => {
+                      // Allow only decimals or empty
+                      const val = e.target.value.replace(',', '.');
+                      if (/^\d*\.?\d*$/.test(val)) {
+                        setCkdCreatinine(val);
+                      }
+                    }}
+                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md text-sm text-slate-800 dark:text-white font-semibold"
+                  />
+                </div>
+              </div>
+
+              {/* CKD-EPI output container */}
+              {computedCKDEPI().gfr !== null ? (
+                <div className="p-5 rounded-xl border flex flex-col sm:flex-row justify-between items-center bg-indigo-50/40 dark:bg-slate-955 border-indigo-200">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Filtração Glomerular Estimada (eGFR)</span>
+                    <h4 className="text-3xl font-black text-indigo-700 dark:text-indigo-400 mt-1">
+                      {computedCKDEPI().gfr} <span className="text-base font-normal">mL/min/1.73m²</span>
+                    </h4>
+                  </div>
+                  <div className="mt-3 sm:mt-0 text-center sm:text-right max-w-sm">
+                    <p className="text-[10px] uppercase font-bold text-slate-400">Classificação KDIGO</p>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full mt-1.5 inline-block ${computedCKDEPI().color}`}>
+                      {computedCKDEPI().label}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-slate-50 dark:bg-slate-955 rounded-xl border border-slate-200/60 text-center text-xs text-slate-405">
+                  Por favor, insira valores válidos para Idade e Creatinina para obter o cálculo da taxa de filtração glomerular.
+                </div>
+              )}
+
+              {/* Formula & Reference notes */}
+              <div className="bg-slate-50 dark:bg-slate-955 p-3 rounded-lg border border-slate-100 text-[10.5px] text-slate-400 space-y-1">
+                <p className="font-bold text-slate-500">Sobre a equação CKD-EPI 2021:</p>
+                <p>
+                  Esta é a equação recomendada atualmente pela National Kidney Foundation (NKF) e pela American Society of Nephrology (ASN) para estimativa da TFG baseada na creatitina sérica, eliminando o fator multiplicador para a raça negra a fim de prover cuidados médicos mais justos e precisos.
+                </p>
+                <p className="font-semibold text-indigo-500/80">
+                  Fórmula: eGFR = 142 × min(Scr/κ, 1)ᵅ × max(Scr/κ, 1)⁻¹·²⁰⁰ × 0.9938ᵃᵍᵉ × [1.012 se sexo feminino]
+                </p>
               </div>
             </div>
           )}
