@@ -141,9 +141,21 @@ const DEMO_PRESCRIPTION = `PRESCRIÇÃO MÉDICA - LEITO UTI 03
 10. Insulina Humana Regular SC conforme glicemia capilar de 4/4h (escala móvel)
 11. Nebulização com Brometo de Ipratrópio 10 gotas + SF 0.9% 5ml de 6/6h`;
 
+interface ClinicalFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  data: string; // Base64 data (excluding metadata header)
+}
+
 export default function ReportSummaryTab() {
   const [evolutionText, setEvolutionText] = useState("");
   const [prescriptionText, setPrescriptionText] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<ClinicalFile[]>([]);
+  const [isDragActive, setIsDragActive] = useState(false);
+  
+  // Legacy states kept for internal reference safety
   const [file, setFile] = useState<File | null>(null);
   const [fileData, setFileData] = useState<string>("");
   const [fileMime, setFileMime] = useState<string>("");
@@ -177,6 +189,7 @@ export default function ReportSummaryTab() {
     setFile(null);
     setFileData("");
     setFileMime("");
+    setUploadedFiles([]);
     setError(null);
   };
 
@@ -186,39 +199,84 @@ export default function ReportSummaryTab() {
     setFile(null);
     setFileData("");
     setFileMime("");
+    setUploadedFiles([]);
     setError(null);
   };
 
   // Convert uploaded files (txt, pdf, images) to base64 for Gemini payload ingestion
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    if (selectedFile.size > 20 * 1024 * 1024) {
-      setError("O arquivo selecionado é grande demais. Por favor selecione arquivos menores que 20MB.");
-      return;
+  const processFiles = (filesArray: File[]) => {
+    setError(null);
+    const validFiles: File[] = [];
+    
+    for (const f of filesArray) {
+      if (f.size > 20 * 1024 * 1024) {
+        setError(`O arquivo "${f.name}" é grande demais. Por favor selecione arquivos menores que 20MB.`);
+        return;
+      }
+      validFiles.push(f);
     }
 
-    setFile(selectedFile);
-    setError(null);
-    
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      const base64DataOnly = base64String.split(",")[1];
-      setFileData(base64DataOnly);
-      setFileMime(selectedFile.type);
-    };
-    reader.onerror = () => {
-      setError("Erro ao ler o arquivo. Tente novamente.");
-    };
-    reader.readAsDataURL(selectedFile);
+    validFiles.forEach((selectedFile) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        const base64DataOnly = base64String.split(",")[1];
+        
+        setUploadedFiles((prev) => {
+          // Avoid duplicate files based on name + size
+          if (prev.some((f) => f.name === selectedFile.name && f.size === selectedFile.size)) {
+            return prev;
+          }
+          return [
+            ...prev,
+            {
+              id: `${selectedFile.name}-${selectedFile.size}-${Date.now()}-${Math.random()}`,
+              name: selectedFile.name,
+              size: selectedFile.size,
+              type: selectedFile.type,
+              data: base64DataOnly,
+            }
+          ];
+        });
+      };
+      reader.onerror = () => {
+        setError(`Erro ao ler o arquivo "${selectedFile.name}". Tente novamente.`);
+      };
+      reader.readAsDataURL(selectedFile);
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const filesList = e.target.files;
+    if (!filesList || filesList.length === 0) return;
+    processFiles(Array.from(filesList));
+  };
+
+  // Drag and drop events
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setIsDragActive(true);
+    } else if (e.type === "dragleave") {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(Array.from(e.dataTransfer.files));
+    }
   };
 
   // Safe server post to /api/summarize
   const handleSubmitSummary = async () => {
-    if (!evolutionText.trim() && !prescriptionText.trim() && !fileData) {
-      setError("Por favor, cole uma Evolução Clínica, digite uma Prescrição ou anexe um arquivo para resumir.");
+    if (!evolutionText.trim() && !prescriptionText.trim() && uploadedFiles.length === 0) {
+      setError("Por favor, cole uma Evolução Clínica, digite uma Prescrição ou anexe arquivos para resumir.");
       return;
     }
 
@@ -245,8 +303,10 @@ export default function ReportSummaryTab() {
         body: JSON.stringify({
           evolutionText,
           prescriptionText,
-          fileData,
-          fileMime,
+          files: uploadedFiles.map(f => ({
+            data: f.data,
+            mimeType: f.type
+          }))
         }),
       });
 
@@ -490,48 +550,88 @@ ${summary.prescricaoMedica?.length > 0
               </div>
 
               <div 
+                onDragEnter={handleDrag}
+                onDragOver={handleDrag}
+                onDragLeave={handleDrag}
+                onDrop={handleDrop}
                 className={`border-2 border-dashed rounded-xl p-5 text-center flex flex-col items-center justify-center transition-all ${
-                  file 
-                    ? "border-emerald-400/50 bg-emerald-50/15 dark:bg-emerald-950/10" 
-                    : "border-slate-250 dark:border-slate-800 bg-slate-50/50 hover:bg-slate-55/70"
+                  isDragActive
+                    ? "border-blue-400 bg-blue-50/15 dark:bg-blue-950/20 scale-[1.01]"
+                    : uploadedFiles.length > 0 
+                      ? "border-emerald-400/50 bg-emerald-50/5 dark:bg-emerald-950/5" 
+                      : "border-slate-250 dark:border-slate-800 bg-slate-50/50 hover:bg-slate-55/70"
                 }`}
               >
-                {file ? (
-                  <div className="space-y-2">
-                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 rounded-full inline-block">
-                      <CheckCircle2 className="w-5 h-5 mx-auto" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate max-w-64 mx-auto">{file.name}</p>
-                      <p className="text-[10px] text-slate-400">{(file.size / (1024 * 1024)).toFixed(2)} MB • PDF/Imagem lido com segurança</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setFile(null);
-                        setFileData("");
-                        setFileMime("");
-                      }}
-                      className="text-[10px] text-rose-500 font-bold hover:underline"
-                    >
-                      Remover arquivo
-                    </button>
+                <label className="cursor-pointer space-y-2 group block w-full">
+                  <Upload className="w-7 h-7 mx-auto text-slate-400 group-hover:text-slate-500 transition-colors" />
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold text-slate-700 dark:text-slate-350">
+                      Arraste ou <span className="text-blue-500 underline font-extrabold">clique para selecionar múltiplos arquivos ou imagens</span>
+                    </p>
+                    <p className="text-[9px] text-slate-400">Suporte a múltiplos arquivos PDF, PNG, JPG, JPEG ou TXT até 20MB cada</p>
                   </div>
-                ) : (
-                  <label className="cursor-pointer space-y-2 group block">
-                    <Upload className="w-7 h-7 mx-auto text-slate-400 group-hover:text-slate-500 transition-colors" />
-                    <div className="space-y-1">
-                      <p className="text-[11px] font-bold text-slate-700 dark:text-slate-350">
-                        Arraste ou <span className="text-blue-500 underline">clique para selecionar o PDF/Imagem</span>
+                  <input 
+                    type="file" 
+                    multiple
+                    accept="application/pdf,image/png,image/jpeg,image/jpg,text/plain" 
+                    onChange={handleFileChange}
+                    className="hidden" 
+                  />
+                </label>
+
+                {uploadedFiles.length > 0 && (
+                  <div className="w-full text-left space-y-2.5 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                        Arquivos Selecionados ({uploadedFiles.length})
                       </p>
-                      <p className="text-[9px] text-slate-400">Prescrições, laudos de exames ou resultados impressos</p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setUploadedFiles([]);
+                        }}
+                        className="text-[9px] text-rose-500 hover:text-rose-600 font-bold hover:underline"
+                      >
+                        Limpar todos
+                      </button>
                     </div>
-                    <input 
-                      type="file" 
-                      accept="application/pdf,image/png,image/jpeg,image/jpg,text/plain" 
-                      onChange={handleFileChange}
-                      className="hidden" 
-                    />
-                  </label>
+
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {uploadedFiles.map((f) => (
+                        <div 
+                          key={f.id} 
+                          className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl hover:border-slate-200 dark:hover:border-slate-800 transition-all"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 max-w-[85%]">
+                            <span className="text-sm select-none">
+                              {f.type.includes("pdf") ? "📄" : f.type.startsWith("image/") ? "🖼️" : "📝"}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-205 truncate" title={f.name}>
+                                {f.name}
+                              </p>
+                              <p className="text-[8px] text-slate-400 font-medium">
+                                {(f.size / (1024 * 1024)).toFixed(2)} MB • {f.type.includes("pdf") ? "PDF" : f.type.startsWith("image/") ? "Imagem" : "Texto"}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setUploadedFiles(prev => prev.filter(item => item.id !== f.id));
+                            }}
+                            className="p-1 hover:bg-rose-50 dark:hover:bg-rose-955/20 text-slate-400 hover:text-rose-500 rounded-lg transition-colors shrink-0"
+                            title="Remover arquivo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
