@@ -171,7 +171,15 @@ const summarySchema = {
     },
     prescricaoMedica: {
       type: Type.ARRAY,
-      items: { type: Type.STRING },
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          medicamento: { type: Type.STRING, description: "Nome do medicamento, princípio ativo, solução ou soro" },
+          dose: { type: Type.STRING, description: "Dose prescrita correspondente, ex: 1g, 500mg, 5mcg, 2ml, etc. Se ausente, 'Não informada'" },
+          posologia: { type: Type.STRING, description: "Frequência, via de administração ou posologia, ex: de 6/6h, 1x ao dia, infusão contínua, via oral. Se ausente, 'Não informada'" }
+        },
+        required: ["medicamento", "dose", "posologia"]
+      },
       description: "OBRIGATÓRIO: Lista contendo absolutamente TODOS, SEM EXCEÇÃO, os medicamentos, fármacos, soluções, eletrólitos, soros de diluição ou infusões ativas identificados na prescrição (texto e anexos). É um perigo clínico negligenciar qualquer item. Realize uma leitura exaustiva linha a linha."
     }
   },

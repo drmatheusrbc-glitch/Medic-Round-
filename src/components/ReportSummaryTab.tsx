@@ -77,6 +77,12 @@ interface TreatmentPlan {
   pendencias: string[];
 }
 
+interface PrescriptionMedication {
+  medicamento: string;
+  dose: string;
+  posologia: string;
+}
+
 interface ClinicalSummary {
   identidade: Identity;
   diasInternacao: InternmentDays;
@@ -86,7 +92,7 @@ interface ClinicalSummary {
   culturasAntibioticos: CulturesAntibiotics;
   sinaisEParametros: ClinicalParameters;
   planoCondutas: TreatmentPlan;
-  prescricaoMedica: string[];
+  prescricaoMedica: PrescriptionMedication[];
 }
 
 // Built-in high fidelity clinical demos to allow immediate visual playground testing
@@ -393,7 +399,7 @@ ${summary.planoCondutas.pendencias?.map(p => `  * ${p}`).join("\n") || "  * Nenh
 
 9. MEDICAÇÕES DA PRESCRIÇÃO EXTRAÍDAS
 ${summary.prescricaoMedica?.length > 0 
-  ? summary.prescricaoMedica.map((m, idx) => `  ${idx + 1}. ${m}`).join("\n")
+  ? summary.prescricaoMedica.map((m, idx) => `  ${idx + 1}. ${m.medicamento} | Dose: ${m.dose} | Posologia: ${m.posologia}`).join("\n")
   : "  * Nenhuma medicação extraída."}
 
 --- Gerado via Assistente Clínico Medic Round Pro ---`;
@@ -1091,14 +1097,40 @@ ${summary.prescricaoMedica?.length > 0
                 </div>
 
                 {summary.prescricaoMedica?.length > 0 ? (
-                  <ul className="space-y-1.5 text-xs">
-                    {summary.prescricaoMedica.map((med, idx) => (
-                      <li key={idx} className="bg-slate-50 dark:bg-slate-955 p-2 rounded-lg border border-slate-105 dark:border-slate-850/55 font-bold text-slate-755 dark:text-slate-300 flex items-start gap-2 shadow-2xs leading-tight">
-                        <span className="text-emerald-500 mt-0.5 shrink-0 font-extrabold">{idx + 1}.</span>
-                        <span>{med}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                          <th className="py-2 px-3 w-12 text-center">Nº</th>
+                          <th className="py-2 px-3">Medicamento / Princípio Ativo</th>
+                          <th className="py-2 px-3">Dose</th>
+                          <th className="py-2 px-3 text-right">Posologia / Frequência</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                        {summary.prescricaoMedica.map((med, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/40 transition-colors">
+                            <td className="py-2.5 px-3 text-center font-black text-emerald-600 dark:text-emerald-400 select-none bg-emerald-50/20 dark:bg-emerald-950/10 rounded-l-lg">
+                              {idx + 1}
+                            </td>
+                            <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200">
+                              {med.medicamento}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 rounded-md border border-blue-100 dark:border-blue-900/30">
+                                {med.dose || "Não Informada"}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right rounded-r-lg">
+                              <span className="px-2 py-0.5 text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200/60 dark:border-slate-700/50">
+                                {med.posologia || "Não Informada"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <div className="text-center p-4">
                     <p className="text-[11px] text-slate-400 font-medium">Nenhum medicamento ativo pôde ser extraído.</p>
