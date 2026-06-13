@@ -216,10 +216,119 @@ app.post("/api/summarize", async (req, res) => {
       });
     }
 
-    // Build parts for the Gemini API call
+    // 1. Normalize files list (handles either new multiple files array or legacy single file base64 fields)
+    const normalizedFiles: Array<{ name: string; mimeType: string; data: string }> = [];
+    if (files && Array.isArray(files)) {
+      files.forEach((f, idx) => {
+        if (f.data && f.mimeType) {
+          normalizedFiles.push({
+            name: f.name || `arquivo_${idx + 1}`,
+            mimeType: f.mimeType,
+            data: f.data,
+          });
+        }
+      });
+    } else if (fileData && fileMime) {
+      normalizedFiles.push({
+        name: "arquivo_anexo",
+        mimeType: fileMime,
+        data: fileData,
+      });
+    }
+
+    // 2. OCR and text extraction for each uploaded file (runs in parallel for maximum speed)
+    console.log(`[Summarize] Iniciando extração e OCR para ${normalizedFiles.length} arquivos...`);
+    const extractedTextsPromises = normalizedFiles.map(async (f) => {
+      let fileText = "";
+      
+      // Handle plain text files directly
+      if (f.mimeType === "text/plain" || f.mimeType.startsWith("text/")) {
+        try {
+          fileText = Buffer.from(f.data, "base64").toString("utf-8");
+          console.log(`[Summarize text] Extraído diretamente de arquivo de texto: ${f.name}`);
+        } catch (e) {
+          console.error(`[Summarize text] Erro ao descriptografar arquivo de texto ${f.name}:`, e);
+        }
+      } 
+      // Handle PDF files (try PDFParse first to be fast)
+      else if (f.mimeType === "application/pdf") {
+        try {
+          const buffer = Buffer.from(f.data, "base64");
+          const parser = new PDFParse({ data: new Uint8Array(buffer), verbosity: 0 });
+          const textResult = await parser.getText();
+          await parser.destroy();
+          fileText = textResult.text || "";
+          console.log(`[Summarize PDF] Extraído via PDFParse para: ${f.name} (${fileText.length} caracteres)`);
+        } catch (pdfErr) {
+          console.warn(`[Summarize PDF] Falha no PDFParse para ${f.name}, recuando para Gemini OCR:`, pdfErr);
+        }
+      }
+
+      // If PDF has no text (scanned PDF) or it is an image, we use Gemini 3.5 Flash for dedicated OCR
+      if (!fileText || fileText.trim().length < 100) {
+        try {
+          console.log(`[Summarize OCR] Executando OCR dedicado via Gemini para: ${f.name} (${f.mimeType})`);
+          
+          const ocrParts = [
+            {
+              inlineData: {
+                mimeType: f.mimeType,
+                data: f.data,
+              }
+            },
+            {
+              text: `Você é um leitor óptico clínico (OCR de Prancheta/Prescrição de UTI) ultra-analítico.
+Sua única e exclusiva função é transcrever linha por linha, palavra por palavra, absolutamente TUDO o que encontrar no documento ou imagem fornecida.
+
+DIRETRIZES DE EXTRAÇÃO ULTRA-RESILIENTE DE MEDICAÇÕES:
+1. Faça uma varredura minuciosa e liste TODOS os medicamentos, princípios ativos, drogas de infusão, antibióticos, protetores gástricos, anticoagulantes, analgésicos, eletrólitos, soros e diluções.
+2. Não ignore linhas de texto ou anotações à caneta/impressas.
+3. Transcreva a dose de cada item (ex: "500 mg", "1g", "5mcg/kg/min", "1 ampola").
+4. Transcreva a via de administração (ex: "EV", "VO", "SC", "nasogástrica").
+5. Transcreva a posologia e frequência (ex: "de 6/6h", "uma vez ao dia", "infusão contínua", "se necessário").
+6. Se encontrar dados sobre exames laboratoriais ou culturas no papel, transcreva-os também para complementar a ficha do paciente.
+
+Dever Ético e de Segurança: Omissões de medicamentos em UTI põem vidas em perigo. Transcreva absolutamente tudo na íntegra, de forma literal e sem fazer resumos ou observações pessoais.`
+            }
+          ];
+
+          const ocrResponse = await generateContentWithRetry({
+            model: "gemini-3.5-flash",
+            contents: { parts: ocrParts },
+            config: {
+              temperature: 0.1, // Near-deterministic response
+            }
+          });
+
+          fileText = ocrResponse.text || "";
+          console.log(`[Summarize OCR] OCR concluído para ${f.name}. Caracteres extraídos: ${fileText.length}`);
+        } catch (ocrErr) {
+          console.error(`[Summarize OCR] Erro ao executar OCR via Gemini para ${f.name}:`, ocrErr);
+        }
+      }
+
+      return {
+        name: f.name,
+        mimeType: f.mimeType,
+        text: fileText.trim()
+      };
+    });
+
+    const extractionResults = await Promise.all(extractedTextsPromises);
+    const validExtractions = extractionResults.filter((r) => r.text.length > 0);
+    
+    // Combine all extracted text blocks into a single comprehensive context block
+    let ocrCombinedText = "";
+    if (validExtractions.length > 0) {
+      ocrCombinedText = validExtractions.map((r, i) => {
+        return `=== ARQUIVO DE PRESCRIÇÃO/EXAME ANEXADO #${i + 1} (Nome: ${r.name}) ===\n[INÍCIO DA TRANSCRIÇÃO OCR]\n${r.text}\n[FIM DA TRANSCRIÇÃO OCR]`;
+      }).join("\n\n");
+    }
+
+    // 3. Build parts for the final structured main clinical summary call
     const parts: any[] = [
       {
-        text: `Você é um Médico Intensivista Senior e Assistente Inteligente de UTI de altíssimo nível. Seu objetivo é analisar a Evolução Clínica do paciente e as Prescrições Médicas fornecidas para gerar um Resumo de Prontuário extremamente preciso, cirúrgico, estruturado e 100% fidedigno.
+        text: `Você é um Médico Intensivista Senior e Assistente Inteligente de UTI de altíssimo nível. Seu objetivo é analisar a Evolução Clínica do paciente e as Prescrições Médicas fornecidas (fornecidas tanto por texto digitado quanto por transcrições OCR de arquivos anexados) para gerar um Resumo de Prontuário extremamente preciso, cirúrgico, estruturado e 100% fidedigno.
 
 DIRETRIZ DE SEGURANÇA MÁXIMA - EXTRAÇÃO DE MEDICAÇÕES (ÁREA 9):
 1. É ABSOLUTAMENTE CRÍTICO e OBRIGATÓRIO extrair 100% de TODAS as medicações, drogas e substâncias ativas constantes na Prescrição Médica. 
@@ -230,7 +339,7 @@ DIRETRIZ DE SEGURANÇA MÁXIMA - EXTRAÇÃO DE MEDICAÇÕES (ÁREA 9):
    - Medicamentos de uso continuado ou profiláticos (anticoagulantes como Heparina/Enoxaparina, gastroprotetores como Omeprazol/Pantoprazol);
    - Soluções de hidratação, soros, eletrólitos (Cloreto de Potássio - KCl, Sulfato de Magnésio, Glicose, Soro Fisiológico) e diluentes de infusões;
    - Sintomáticos, antieméticos e analgésicos simples (Dipirona, Metoclopramida, etc.).
-4. Para cada medicamento, se houver dose, via ou frequência identificada, adicione junto ao nome (ex: "Dipirona 1g EV de 6/6h", "Soro Fisiológico 0.9% 500ml IV").
+4. Para cada medicamento, você DEVE preencher cuidadosamente o objeto com as propriedades: 'medicamento', 'dose' e 'posologia'.
 
 Instruções específicas para o preenchimento de cada área:
 1. Identidade: Extraia nome, sexo, idade, peso e procedência. Caso não conste na evolução, escreva 'Não informado'.
@@ -245,43 +354,32 @@ Instruções específicas para o preenchimento de cada área:
 
 Seja fidedigno ao texto original. Nunca invente dados clínicos que não existam ou não possam ser deduzidos de forma segura. Se um dado importante estiver ausente nos relatos, declare como 'Não informado' ou 'Não consta no registro'.
 
-CONTEÚDO PARA ANÁLISE:
+CONTEÚDO PARA ANÁLISE COMPLETA:
 === EVOLUÇÃO CLÍNICA ===
 ${evolutionText || "Nenhuma evolução clínica anexada."}
 
-=== PRESCRIÇÃO MÉDICA (TEXTO) ===
+=== PRESCRIÇÃO MÉDICA (COPIADA/DIGITADA EM TEXTO) ===
 ${prescriptionText || "Nenhuma prescrição por texto anexada."}
+
+=== TEXTOS/CONTEÚDOS EXTRAÍDOS DOS DOCUMENTOS E IMAGENS EM ANEXO ===
+${ocrCombinedText || "Nenhum documento ou imagem anexo para OCR."}
 `,
       },
     ];
 
-    // If multiple uploaded files are provided
-    if (files && Array.isArray(files) && files.length > 0) {
-      files.forEach((f) => {
-        if (f.data && f.mimeType) {
-          parts.push({
-            inlineData: {
-              mimeType: f.mimeType,
-              data: f.data,
-            },
-          });
-        }
-      });
-      parts.push({
-        text: `Os arquivos anexos acima são documentos de Prescrições Médicas ou Exames complementares extras do paciente. Por favor, extraia deles todas as medicações que constam na prescrição e quaisquer dados relevantes para complementar os exames, culturas ou dados clínicos exigidos.`,
-      });
-    } else if (fileData && fileMime) {
-      // If single uploaded document (PDF, TXT, or Image)
+    // Keep the raw images/PDFs in parts for secondary visual check fallback
+    normalizedFiles.forEach((f) => {
       parts.push({
         inlineData: {
-          mimeType: fileMime,
-          data: fileData, // Already expected to be base64 string
+          mimeType: f.mimeType,
+          data: f.data,
         },
       });
-      parts.push({
-        text: `ATENÇÃO CRÍTICA DE EXTRAÇÃO DE PRESCRIÇÃO: O arquivo anexo acima contém a imagem ou documento da Prescrição Médica do paciente. Realize um escaneamento completo e detalhado (linha a linha) e adicione absolutamente TODOS os medicamentos e diluições/soros encontrados à lista 'prescricaoMedica'. Não resuma, não agrupe e não pule nenhum item de medicação sequer.`,
-      });
-    }
+    });
+
+    parts.push({
+      text: `ATENÇÃO CRÍTICA FINAL: Utilize prioritariamente as descrições de texto e as transcrições OCR acima fornecidas para mapear a área 'prescricaoMedica'. Certifique-se de que cada item mapeado contém o parágrafo ou linha da medicação completo, dividindo-o com precisão entre o nome ('medicamento'), a 'dose' (ex: '20mg', '1g', '5ml/h' - nunca deixe em branco, use 'Não informada' se ausente) e a 'posologia' (ex: 'via oral de 12/12h', 'EV de 8/8h' - nunca deixe em branco, use 'Não informada' se ausente).`
+    });
 
     const response = await generateContentWithRetry({
       model: "gemini-3.5-flash",
