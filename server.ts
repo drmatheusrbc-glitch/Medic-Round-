@@ -172,7 +172,7 @@ const summarySchema = {
     prescricaoMedica: {
       type: Type.ARRAY,
       items: { type: Type.STRING },
-      description: "Lista de todos os medicamentos extraídos em uso na prescrição médica enviada por texto ou anexo"
+      description: "OBRIGATÓRIO: Lista contendo absolutamente TODOS, SEM EXCEÇÃO, os medicamentos, fármacos, soluções, eletrólitos, soros de diluição ou infusões ativas identificados na prescrição (texto e anexos). É um perigo clínico negligenciar qualquer item. Realize uma leitura exaustiva linha a linha."
     }
   },
   required: [
@@ -211,7 +211,18 @@ app.post("/api/summarize", async (req, res) => {
     // Build parts for the Gemini API call
     const parts: any[] = [
       {
-        text: `Você é um Assistente Médico Inteligente de UTI de alto nível. Seu objetivo é analisar a Evolução Clínica do paciente e opcionalmente uma Prescrição Médica para criar um Resumo de Prontuário extremamente preciso, fidedigno e estruturado.
+        text: `Você é um Médico Intensivista Senior e Assistente Inteligente de UTI de altíssimo nível. Seu objetivo é analisar a Evolução Clínica do paciente e as Prescrições Médicas fornecidas para gerar um Resumo de Prontuário extremamente preciso, cirúrgico, estruturado e 100% fidedigno.
+
+DIRETRIZ DE SEGURANÇA MÁXIMA - EXTRAÇÃO DE MEDICAÇÕES (ÁREA 9):
+1. É ABSOLUTAMENTE CRÍTICO e OBRIGATÓRIO extrair 100% de TODAS as medicações, drogas e substâncias ativas constantes na Prescrição Médica. 
+2. NÃO OMITA, NÃO ABREVIE e NÃO AGRUPE nenhum item. Se houver 15 medicamentos descritos nas imagens, páginas ou textos, você deve retornar exatamente uma lista com todos os 15 itens individuais no campo 'prescricaoMedica'.
+3. Realize uma busca e varredura exaustiva linha por linha nos arquivos e textos em busca de:
+   - Antibióticos, antivirais e antifúngicos;
+   - Drogas vasoativas e sedativos/analgésicos (independente de estarem na evolução ou na prescrição em anexo);
+   - Medicamentos de uso continuado ou profiláticos (anticoagulantes como Heparina/Enoxaparina, gastroprotetores como Omeprazol/Pantoprazol);
+   - Soluções de hidratação, soros, eletrólitos (Cloreto de Potássio - KCl, Sulfato de Magnésio, Glicose, Soro Fisiológico) e diluentes de infusões;
+   - Sintomáticos, antieméticos e analgésicos simples (Dipirona, Metoclopramida, etc.).
+4. Para cada medicamento, se houver dose, via ou frequência identificada, adicione junto ao nome (ex: "Dipirona 1g EV de 6/6h", "Soro Fisiológico 0.9% 500ml IV").
 
 Instruções específicas para o preenchimento de cada área:
 1. Identidade: Extraia nome, sexo, idade, peso e procedência. Caso não conste na evolução, escreva 'Não informado'.
@@ -222,7 +233,7 @@ Instruções específicas para o preenchimento de cada área:
 6. Culturas / Antibióticos: Lista detalhada contendo culturas colhidas e resultados. Liste antimicrobianos prévios que já foram suspensos/completados com os dias de uso e a data/dia de início se estiver indicado. Liste também os antimicrobianos atuais em uso, com o respectivo dia atual (D1, D2, D3, etc.), dose e obrigatoriamente a data de início ou dia de início se essa informação constar no texto original (ex: 'Ceftriaxona (D4) - Iniciado em 03/06/2026').
 7. Sinais vitais, Balanço hídrico, DVA e Ventilação: Liste os sinais vitais, balanço hídrico das últimas 24h, dose de drogas vasoativas em uso (Noradrenalina, Vasopressina, Dobutamina, etc.) e parâmetros completos de ventilação mecânica se o paciente estiver intubado/traqueostomizado.
 8. Plano Terapêutico e Condutas/Pendências: Liste as condutas terapêuticas estabelecidas (ex: manter cabeceira elevada, profilaxias ativas, etc.) e pendências (ex: aguardar resultado de PCR, solicitar parecer da nefrologia).
-9. Prescrição Médica: Relacione as medicações ativas na prescrição. Faça uma lista organizada com todos os fármacos identificados na prescrição (pode ser enviada no campo 'prescriptionText', extraída diretamente dos arquivos PDF/imagem anexos, ou uma combinação).
+9. Prescrição Médica: Relacione as medicações ativas na prescrição. Faça uma lista organizada contendo 100% de todos os fármacos identificados na prescrição (pode ser enviada no campo 'prescriptionText', extraída diretamente dos arquivos PDF/imagem anexos, ou uma combinação).
 
 Seja fidedigno ao texto original. Nunca invente dados clínicos que não existam ou não possam ser deduzidos de forma segura. Se um dado importante estiver ausente nos relatos, declare como 'Não informado' ou 'Não consta no registro'.
 
@@ -260,7 +271,7 @@ ${prescriptionText || "Nenhuma prescrição por texto anexada."}
         },
       });
       parts.push({
-        text: `O arquivo anexo acima é o documento da Prescrição Médica ou Exame complementar do paciente. Por favor, extraia dele as medicações que constam na prescrição e quaisquer dados relevantes para complementar os exames, culturas ou dados clínicos exigidos.`,
+        text: `ATENÇÃO CRÍTICA DE EXTRAÇÃO DE PRESCRIÇÃO: O arquivo anexo acima contém a imagem ou documento da Prescrição Médica do paciente. Realize um escaneamento completo e detalhado (linha a linha) e adicione absolutamente TODOS os medicamentos e diluições/soros encontrados à lista 'prescricaoMedica'. Não resuma, não agrupe e não pule nenhum item de medicação sequer.`,
       });
     }
 
@@ -268,9 +279,10 @@ ${prescriptionText || "Nenhuma prescrição por texto anexada."}
       model: "gemini-3.5-flash",
       contents: { parts },
       config: {
+        systemInstruction: "Você é um Médico Intensivista Sênior que realiza OCR clínico e análises estruturadas de alta fidelidade sem margem para erro. Em relação à prescrição do paciente, seu maior dever ético é listar absolutamente TODOS os itens médicos descritos (soros, diluições, eletrólitos, ampolas, doses de resgate, anticoagulantes, protetores gástricos, antibióticos e sintomáticos). É terminantemente proibido pular ou agrupar medicamentos listados na folha de prescrição médica enviada por imagem ou texto.",
         responseMimeType: "application/json",
         responseSchema: summarySchema,
-        temperature: 0.2, // Low temperature for high extraction fidelity
+        temperature: 0.1, // Zero creativity, maximum precision and recall
       },
     });
 
