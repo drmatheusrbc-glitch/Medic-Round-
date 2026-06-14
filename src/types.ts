@@ -40,6 +40,17 @@ export interface PatientRound {
   prophylaxis: PatientProphylaxis;
   occurrences: string;
   createdAt: string;
+  tx?: string;
+  dx?: string;
+  defecouTxt?: string;
+  exames?: string;
+  culturas?: string;
+  profilaxiasText?: string;
+  fcTxt?: string;
+  frTxt?: string;
+  pasTxt?: string;
+  padTxt?: string;
+  satTxt?: string;
 }
 
 export type VentMode = 'VCV' | 'PCV' | 'PSV';

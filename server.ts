@@ -4,7 +4,8 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
 import fs from "fs";
-import { PDFParse } from "pdf-parse";
+// @ts-ignore
+import PdfParse from "pdf-parse";
 
 dotenv.config();
 
@@ -250,17 +251,15 @@ app.post("/api/summarize", async (req, res) => {
           console.error(`[Summarize text] Erro ao descriptografar arquivo de texto ${f.name}:`, e);
         }
       } 
-      // Handle PDF files (try PDFParse first to be fast)
+      // Handle PDF files (try PdfParse first to be fast)
       else if (f.mimeType === "application/pdf") {
         try {
           const buffer = Buffer.from(f.data, "base64");
-          const parser = new PDFParse({ data: new Uint8Array(buffer), verbosity: 0 });
-          const textResult = await parser.getText();
-          await parser.destroy();
-          fileText = textResult.text || "";
-          console.log(`[Summarize PDF] Extraído via PDFParse para: ${f.name} (${fileText.length} caracteres)`);
+          const parsed = await PdfParse(buffer);
+          fileText = parsed.text || "";
+          console.log(`[Summarize PDF] Extraído via pdf-parse para: ${f.name} (${fileText.length} caracteres)`);
         } catch (pdfErr) {
-          console.warn(`[Summarize PDF] Falha no PDFParse para ${f.name}, recuando para Gemini OCR:`, pdfErr);
+          console.warn(`[Summarize PDF] Falha no pdf-parse para ${f.name}, recuando para Gemini OCR:`, pdfErr);
         }
       }
 
@@ -1053,15 +1052,13 @@ app.post("/api/preceptor/upload-file", async (req, res) => {
       let pdfParsedText = "";
       if (mimeType === "application/pdf") {
         try {
-          console.log(`[RAG PDF Extractor] Tentando extração de texto via PDFParse para: ${name}`);
+          console.log(`[RAG PDF Extractor] Tentando extração de texto via PdfParse para: ${name}`);
           const buffer = Buffer.from(base64Data, "base64");
-          const parser = new PDFParse({ data: new Uint8Array(buffer), verbosity: 0 });
-          const textResult = await parser.getText();
-          await parser.destroy();
-          pdfParsedText = textResult.text || "";
+          const parsed = await PdfParse(buffer);
+          pdfParsedText = parsed.text || "";
           console.log(`[RAG PDF Extractor] Extração concluída. Texto extraído: ${pdfParsedText.length} caracteres.`);
         } catch (pdfErr: any) {
-          console.warn("[RAG PDF Extractor] Falha na extração direta com PDFParse, recorrendo ao Gemini OCR:", pdfErr);
+          console.warn("[RAG PDF Extractor] Falha na extração direta com pdf-parse, recorrendo ao Gemini OCR:", pdfErr);
         }
       }
 
@@ -1206,15 +1203,13 @@ app.post("/api/preceptor/import-drive-file", async (req, res) => {
       let pdfParsedText = "";
       if (resolvedMimeType === "application/pdf") {
         try {
-          console.log(`[RAG PDF Extractor] Tentando extração de texto via PDFParse para import do Drive: ${name}`);
+          console.log(`[RAG PDF Extractor] Tentando extração de texto via PdfParse para import do Drive: ${name}`);
           const buffer = Buffer.from(base64Data, "base64");
-          const parser = new PDFParse({ data: new Uint8Array(buffer), verbosity: 0 });
-          const textResult = await parser.getText();
-          await parser.destroy();
-          pdfParsedText = textResult.text || "";
+          const parsed = await PdfParse(buffer);
+          pdfParsedText = parsed.text || "";
           console.log(`[RAG PDF Extractor] Extração concluída para Drive import. Texto extraído: ${pdfParsedText.length} caracteres.`);
         } catch (pdfErr: any) {
-          console.warn("[RAG PDF Extractor] Falha na extração direta com PDFParse para import do Drive, recorrendo ao Gemini OCR:", pdfErr);
+          console.warn("[RAG PDF Extractor] Falha na extração direta com pdf-parse para import do Drive, recorrendo ao Gemini OCR:", pdfErr);
         }
       }
 
